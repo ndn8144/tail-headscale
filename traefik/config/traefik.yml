@@ -1,0 +1,54 @@
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+
+serversTransport:
+  insecureSkipVerify: true
+
+api:
+  dashboard: true
+  debug: false
+
+log:
+  level: INFO
+  filePath: "/var/log/traefik.log"
+
+accessLog:
+  filePath: "/var/log/access.log"
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+  websecure:
+    address: ":443"
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: proxy
+    watch: true
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      tlsChallenge: {}
+      email: admin@company.vn  # Update with your email
+      storage: /letsencrypt/acme.json
+      caServer: https://acme-v02.api.letsencrypt.org/directory
+      # For testing, use staging:
+      # caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+
+metrics:
+  prometheus:
+    addEntryPointsLabels: true
+    addServicesLabels: true

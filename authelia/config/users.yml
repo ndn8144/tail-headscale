@@ -1,0 +1,31 @@
+# Users database
+# Format: username: password_hash, email, groups
+
+users:
+  # System Administrator
+  admin@company.vn:
+    displayname: "System Administrator"
+    password: "$argon2id$v=19$m=65536,t=3,p=4$REPLACE_WITH_ADMIN_HASH"
+    email: admin@company.vn
+    groups:
+      - headscale-admins
+      - headscale-users
+
+  # IT Manager  
+  itmanager@company.vn:
+    displayname: "IT Manager"
+    password: "$argon2id$v=19$m=65536,t=3,p=4$REPLACE_WITH_MANAGER_HASH"
+    email: itmanager@company.vn
+    groups:
+      - headscale-admins
+      - headscale-users
+
+  # Test User
+  testuser@company.vn:
+    displayname: "Test User"
+    password: "$argon2id$v=19$m=65536,t=3,p=4$REPLACE_WITH_USER_HASH"
+    email: testuser@company.vn
+    groups:
+      - headscale-users
+
+# Note: Replace REPLACE_WITH_*_HASH with actual hashes generated above

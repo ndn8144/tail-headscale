@@ -1,0 +1,97 @@
+# Headscale Configuration
+
+# Server URLs
+server_url: https://tailscale.company.vn
+listen_addr: 0.0.0.0:8080
+metrics_listen_addr: 0.0.0.0:9090
+grpc_listen_addr: 0.0.0.0:50443
+
+# Database Configuration (PostgreSQL)
+db_type: postgres
+db_host: headscale_postgres
+db_port: 5432
+db_name: headscale
+db_user: headscale
+db_pass: ${DB_PASSWORD}
+
+# Private Keys
+private_key_path: /var/lib/headscale/private.key
+noise:
+  private_key_path: /var/lib/headscale/noise_private.key
+
+# IP Prefixes for VPN
+prefixes:
+  v4: 100.64.0.0/16
+  v6: fd7a:115c:a1e0::/48
+
+# DERP Configuration
+derp:
+  server:
+    enabled: false
+  urls:
+    - https://controlplane.tailscale.com/derpmap/default
+  paths: []
+  auto_update_enabled: true
+  update_frequency: 24h
+
+# DNS Configuration
+dns_config:
+  override_local_dns: true
+  nameservers:
+    - 1.1.1.1
+    - 8.8.8.8
+  domains: []
+  magic_dns: true
+  base_domain: company.internal
+  
+# DNS Extra Records
+dns:
+  extra_records:
+    - name: "git.company.internal"
+      type: "A"
+      value: "100.64.0.10"
+    - name: "wiki.company.internal" 
+      type: "A"
+      value: "100.64.0.11"
+    - name: "monitoring.company.internal"
+      type: "A"
+      value: "100.64.0.12"
+
+# OIDC Configuration
+oidc:
+  only_start_if_oidc_is_available: false
+  issuer: "https://auth.company.vn"
+  client_id: "headscale-client"
+  client_secret: "${HEADSCALE_OIDC_SECRET}"
+  scope: ["openid", "profile", "email", "groups"]
+  extra_params: {}
+  allowed_domains: ["company.vn"]
+  allowed_groups: ["headscale-users", "headscale-admins"]
+  allowed_users: []
+  strip_email_domain: false
+  expiry: "180d"
+  use_expiry_from_token: true
+
+# ACL Policy Configuration
+policy:
+  mode: database
+
+# Logging
+log:
+  format: json
+  level: info
+
+# Unix Socket
+unix_socket: /var/run/headscale/headscale.sock
+unix_socket_permission: "0770"
+
+# Disable check updates
+disable_check_updates: true
+
+# Client configuration
+randomize_client_port: false
+
+# WebSocket
+# Enable if needed for certain clients
+# websocket:
+#   enabled: true

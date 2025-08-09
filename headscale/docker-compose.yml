@@ -1,0 +1,55 @@
+version: '3.8'
+
+networks:
+  headscale_internal:
+    external: true
+  proxy:
+    external: true
+
+volumes:
+  headscale_data:
+    driver: local
+
+services:
+  headscale:
+    image: headscale/headscale:0.26.0
+    container_name: headscale
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Ho_Chi_Minh
+      - DB_PASSWORD=${DB_PASSWORD}
+      - HEADSCALE_OIDC_SECRET=${HEADSCALE_OIDC_SECRET}
+    volumes:
+      - ./config:/etc/headscale:ro
+      - headscale_data:/var/lib/headscale
+      - /var/run/headscale:/var/run/headscale
+    networks:
+      - proxy
+      - headscale_internal
+    depends_on:
+      - headscale_postgres
+      - authelia
+    command: serve
+    labels:
+      # Headplane discovery labels
+      - "com.headplane.selector=headscale"
+      - "me.tale.headplane.target=headscale"
+      # Traefik labels
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.headscale.rule=Host(`tailscale.company.vn`)"
+      - "traefik.http.routers.headscale.entrypoints=websecure"
+      - "traefik.http.routers.headscale.tls.certresolver=letsencrypt"
+      - "traefik.http.services.headscale.loadbalancer.server.port=8080"
+      # CORS middleware
+      - "traefik.http.middlewares.headscale-cors.headers.accessControlAllowMethods=GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      - "traefik.http.middlewares.headscale-cors.headers.accessControlAllowHeaders=Authorization,Content-Type"
+      - "traefik.http.middlewares.headscale-cors.headers.accessControlAllowOriginList=https://admin.company.vn"
+      - "traefik.http.middlewares.headscale-cors.headers.accessControlMaxAge=3600"
+      - "traefik.http.routers.headscale.middlewares=headscale-cors,secure-headers"
+    healthcheck:
+      test: ["CMD", "headscale", "version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

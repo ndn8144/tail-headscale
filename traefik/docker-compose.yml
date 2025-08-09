@@ -1,0 +1,46 @@
+version: '3.8'
+
+networks:
+  proxy:
+    external: true
+
+volumes:
+  letsencrypt:
+    driver: local
+  traefik_logs:
+    driver: local
+
+services:
+  traefik:
+    image: traefik:v3.3
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - TZ=Asia/Ho_Chi_Minh
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./config/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./config/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - letsencrypt:/letsencrypt
+      - traefik_logs:/var/log
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      # Dashboard
+      - "traefik.http.routers.traefik.rule=Host(`traefik.company.vn`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.service=api@internal"
+      # Basic auth for dashboard (username: admin, password: admin123)
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=admin:$$2y$$10$$Xqf6gWP8.d6JYUOPCqR5aOdRHwQT7vxJBxMPqvyMcjBHjr5KXaH22"
+      - "traefik.http.routers.traefik.middlewares=traefik-auth,secure-headers"
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

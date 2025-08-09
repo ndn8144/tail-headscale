@@ -1,0 +1,34 @@
+{
+  // Default ACL for initial setup
+  // This will be replaced by database ACL via Headplane UI
+  
+  "groups": {
+    "group:admin": ["admin@company.vn", "itmanager@company.vn"],
+    "group:users": ["testuser@company.vn"]
+  },
+  
+  "acls": [
+    // Admin full access
+    {
+      "action": "accept",
+      "src": ["group:admin"],
+      "dst": ["*:*"]
+    },
+    
+    // Users basic access
+    {
+      "action": "accept",
+      "src": ["group:users"],
+      "dst": ["group:users:*"]
+    }
+  ],
+  
+  "ssh": [
+    {
+      "action": "accept",
+      "src": ["group:admin"],
+      "dst": ["group:admin"],
+      "users": ["root", "ubuntu"]
+    }
+  ]
+}
