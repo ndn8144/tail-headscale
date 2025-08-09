@@ -1,0 +1,72 @@
+version: '3.8'
+
+networks:
+  headscale_internal:
+    external: true
+
+volumes:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${HEADSCALE_HOME}/database/data
+  postgres_backup:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind  
+      device: ${HEADSCALE_HOME}/database/backup
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: headscale_postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=headscale
+      - POSTGRES_USER=headscale
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=en_US.UTF-8 --lc-ctype=en_US.UTF-8
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - postgres_backup:/backup
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    networks:
+      - headscale_internal
+    command: >
+      postgres 
+      -c max_connections=100
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.7
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c log_statement=none
+      -c log_duration=off
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U headscale -d headscale"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  authelia-db-init:
+    image: postgres:15-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - headscale_internal
+    environment:
+      - PGPASSWORD=${DB_PASSWORD}
+    command: >
+      psql -h postgres -U headscale -d postgres -c "
+      CREATE USER IF NOT EXISTS authelia WITH PASSWORD '${AUTHELIA_DB_PASSWORD}';
+      CREATE DATABASE IF NOT EXISTS authelia OWNER authelia;
+      GRANT ALL PRIVILEGES ON DATABASE authelia TO authelia;"
+    restart: "no"
