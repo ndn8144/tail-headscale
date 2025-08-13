@@ -1,0 +1,17 @@
+# Authelia Users Configuration for Tailnet.work
+users:
+  admin:
+    displayname: "Administrator"
+    password: "$argon2id$v=19$m=65536,t=3,p=4$D6Vb48K3+cGjuHMoJX/RWg$GrcAjST1yNWPLCHkHE2DM3fyE7vxBj7OyiB7V/9UVtE"
+    email: admin@tailnet.work
+    groups:
+      - headscale-admins
+      - headscale-users
+  
+  # Example user
+  # user1:
+  #   displayname: "User One"
+  #   password: "$argon2id$v=19$m=65536,t=3,p=4$YOUR_HASHED_PASSWORD_HERE"
+  #   email: user1@tailnet.work
+  #   groups:
+  #     - headscale-users

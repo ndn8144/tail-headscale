@@ -1,0 +1,134 @@
+modules:
+  # Standard HTTP 2xx check for web interfaces
+  http_2xx:
+    prober: http
+    timeout: 10s
+    http:
+      valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+      valid_status_codes: [200, 301, 302]
+      method: GET
+      follow_redirects: true
+      preferred_ip_protocol: "ip4"
+      headers:
+        User-Agent: "Blackbox-Exporter/Headscale-Monitor"
+      fail_if_ssl: false
+      fail_if_not_ssl: true
+
+  # OIDC/Auth endpoints (may return 401/403 when not authenticated)
+  http_auth_check:
+    prober: http
+    timeout: 10s
+    http:
+      valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+      valid_status_codes: [200, 401, 403]
+      method: GET
+      follow_redirects: true
+      preferred_ip_protocol: "ip4"
+      headers:
+        User-Agent: "Blackbox-Exporter/Headscale-Monitor"
+      fail_if_ssl: false
+      fail_if_not_ssl: true
+
+  # API Health endpoints
+  http_api_health:
+    prober: http
+    timeout: 15s
+    http:
+      valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+      valid_status_codes: [200]
+      method: GET
+      follow_redirects: false
+      preferred_ip_protocol: "ip4"
+      headers:
+        User-Agent: "Blackbox-Exporter/API-Health-Check"
+        Accept: "application/json"
+      fail_if_ssl: false
+      fail_if_not_ssl: true
+
+  # OIDC Discovery endpoint
+  http_oidc_discovery:
+    prober: http
+    timeout: 10s
+    http:
+      valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+      valid_status_codes: [200]
+      method: GET
+      follow_redirects: false
+      preferred_ip_protocol: "ip4"
+      headers:
+        User-Agent: "Blackbox-Exporter/OIDC-Discovery"
+        Accept: "application/json"
+      fail_if_ssl: false
+      fail_if_not_ssl: true
+      fail_if_body_not_matches_regexp:
+        - "issuer"
+        - "authorization_endpoint"
+        - "token_endpoint"
+
+  # Headscale API endpoint check
+  headscale_api:
+    prober: http
+    timeout: 15s
+    http:
+      valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+      valid_status_codes: [401, 403]  # Expected without API key
+      method: GET
+      follow_redirects: false
+      preferred_ip_protocol: "ip4"
+      headers:
+        User-Agent: "Blackbox-Exporter/Headscale-API"
+        Accept: "application/json"
+      fail_if_ssl: false
+      fail_if_not_ssl: true
+
+  # TCP connection test
+  tcp_connect:
+    prober: tcp
+    timeout: 5s
+    tcp:
+      preferred_ip_protocol: "ip4"
+
+  # ICMP ping test
+  icmp:
+    prober: icmp
+    timeout: 5s
+    icmp:
+      preferred_ip_protocol: "ip4"
+
+  # SSH server check
+  ssh_banner:
+    prober: tcp
+    timeout: 10s
+    tcp:
+      query_response:
+        - expect: "^SSH-2.0-"
+      preferred_ip_protocol: "ip4"
+
+  # DNS resolution check
+  dns_tcp:
+    prober: dns
+    timeout: 5s
+    dns:
+      transport_protocol: "tcp"
+      preferred_ip_protocol: "ip4"
+      query_name: "tailnet.work"
+      query_type: "A"
+
+  dns_udp:
+    prober: dns
+    timeout: 5s
+    dns:
+      transport_protocol: "udp"
+      preferred_ip_protocol: "ip4"
+      query_name: "tailnet.work"
+      query_type: "A"
+
+  # Certificate expiry check
+  tls_connect:
+    prober: tcp
+    timeout: 10s
+    tcp:
+      tls: true
+      tls_config:
+        insecure_skip_verify: false
+      preferred_ip_protocol: "ip4"

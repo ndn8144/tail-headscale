@@ -1,0 +1,55 @@
+networks:
+  headscale_internal:
+    external: true
+  proxy:
+    external: true
+
+volumes:
+  authelia_data:
+    driver: local
+
+services:
+  authelia:
+    image: authelia/authelia:4.38.10
+    container_name: authelia
+    restart: unless-stopped
+    user: "1000:1000"  # Sửa permission issue
+    environment:
+      - TZ=Asia/Ho_Chi_Minh
+      # Load secrets from .env - removed quotes for proper expansion
+      - JWT_SECRET=${JWT_SECRET}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - STORAGE_ENCRYPTION_KEY=${STORAGE_ENCRYPTION_KEY}
+      - OIDC_HMAC_SECRET=${OIDC_HMAC_SECRET}
+      - OIDC_PRIVATE_KEY=${OIDC_PRIVATE_KEY}
+      - AUTHELIA_STORAGE_POSTGRES_PASSWORD=${AUTHELIA_DB_PASSWORD}
+      - HEADSCALE_OIDC_SECRET=${HEADSCALE_OIDC_SECRET}
+      - HEADPLANE_OIDC_SECRET=${HEADPLANE_OIDC_SECRET}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+    volumes:
+      - ./config:/config:rw  # Changed from :ro to :rw
+      - authelia_data:/data
+    networks:
+      - proxy
+      - headscale_internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.authelia.rule=Host(`auth.tailnet.work`)"
+      - "traefik.http.routers.authelia.entrypoints=websecure"
+      - "traefik.http.routers.authelia.tls.certresolver=letsencrypt"
+      - "traefik.http.services.authelia.loadbalancer.server.port=9091"
+      # Forward Auth Middleware
+      - "traefik.http.middlewares.authelia.forwardAuth.address=http://authelia:9091/api/verify?rd=https%3A%2F%2Fauth.tailnet.work%2F"
+      - "traefik.http.middlewares.authelia.forwardAuth.trustForwardHeader=true"
+      - "traefik.http.middlewares.authelia.forwardAuth.authResponseHeaders=Remote-User,Remote-Groups,Remote-Name,Remote-Email"
+      - "traefik.http.routers.authelia.middlewares=secure-headers"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9091/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

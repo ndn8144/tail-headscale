@@ -1,0 +1,13 @@
+notifiers:
+  - name: email-alerts
+    type: email
+    uid: email001
+    org_id: 1
+    is_default: true
+    send_reminder: true
+    frequency: 10m
+    disable_resolve_message: false
+    settings:
+      addresses: admin@tailnet.work
+      subject: "[Headscale Alert] {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}"
+      single_email: false

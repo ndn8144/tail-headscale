@@ -1,0 +1,115 @@
+# Authelia Basic Configuration v4.38.10
+
+server:
+  address: tcp://0.0.0.0:9091/
+  asset_path: /config/assets/
+  headers:
+    csp_template: ""
+  buffers:
+    read: 4096
+    write: 4096
+  timeouts:
+    read: 6s
+    write: 6s
+    idle: 30s
+
+# Logging
+log:
+  level: info
+  format: json
+  keep_stdout: true
+
+# Theme & Branding
+theme: auto
+
+# Identity Validation
+identity_validation:
+  reset_password:
+    jwt_secret: ${JWT_SECRET}
+
+# TOTP Configuration
+totp:
+  disable: false
+  issuer: Tailnet.work VPN
+  algorithm: sha1
+  digits: 6
+  period: 30
+  skew: 1
+  secret_size: 32
+
+# WebAuthn (Optional FIDO2 support)
+webauthn:
+  disable: false
+  display_name: Tailnet.work VPN
+  attestation_conveyance_preference: indirect
+  user_verification: preferred
+  timeout: 60s
+
+# Session Configuration
+session:
+  name: authelia_session
+  same_site: lax
+  secret: ${SESSION_SECRET}
+  expiration: 8h
+  inactivity: 30m
+  remember_me: 30d
+  cookies:
+    - domain: tailnet.work
+      authelia_url: https://auth.tailnet.work
+      default_redirection_url: https://admin.tailnet.work
+
+# Regulation (Brute Force Protection)
+regulation:
+  max_retries: 3
+  find_time: 2m
+  ban_time: 5m
+
+# Storage Backend
+storage:
+  encryption_key: ${STORAGE_ENCRYPTION_KEY}
+  postgres:
+    address: tcp://headscale_postgres:5432
+    database: authelia
+    username: authelia
+    password: ${AUTHELIA_DB_PASSWORD}
+    schema: public
+    timeout: 5s
+
+# Notifier Configuration (Required in v4.38.10)
+notifier:
+  disable_startup_check: true
+  filesystem:
+    filename: /data/notification.txt
+
+# Authentication Backend
+authentication_backend:
+  password_reset:
+    disable: false
+    custom_url: ""
+  refresh_interval: 5m
+  file:
+    path: /config/users.yml
+    password:
+      algorithm: argon2id
+      iterations: 3
+      salt_length: 16
+      parallelism: 4
+      memory: 65536
+
+# Access Control Rules
+access_control:
+  default_policy: deny
+  networks:
+    - name: internal
+      networks: ["100.64.0.0/16", "10.0.0.0/8", "192.168.0.0/16", "172.16.0.0/12"]
+  rules:
+    - domain: "headscale.tailnet.work"
+      policy: two_factor
+      subject: "group:headscale-users"
+    
+    - domain: "admin.tailnet.work"
+      policy: two_factor
+      subject: "group:headscale-admins"
+    
+    - domain: "auth.tailnet.work"
+      policy: bypass

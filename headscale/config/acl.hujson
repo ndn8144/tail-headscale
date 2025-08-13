@@ -1,0 +1,29 @@
+{
+	"groups": {
+		"group:admin": ["admin@tailnet.work"],
+		"group:users": ["user@tailnet.work"]
+	},
+
+	"acls": [
+		{
+			"action": "accept",
+			"src":    ["group:admin"],
+			"dst":    ["*:*"]
+		},
+
+		{
+			"action": "accept",
+			"src":    ["group:users"],
+			"dst":    ["group:users:*"]
+		}
+	],
+
+	"ssh": [
+		{
+			"action": "accept",
+			"src":    ["group:admin"],
+			"dst":    ["group:admin"],
+			"users":  ["root", "ubuntu"]
+		}
+	]
+}

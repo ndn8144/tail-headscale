@@ -1,0 +1,96 @@
+networks:
+  headscale_internal:
+    external: true
+  proxy:
+    external: true
+
+volumes:
+  headscale_data:
+    driver: local
+  headscale_postgres_data:
+    driver: local
+
+services:
+  headscale:
+    image: headscale/headscale:0.26.0
+    container_name: headscale
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+      - HEADSCALE_DB_TYPE=postgres
+      - HEADSCALE_DB_HOST=${DB_HOST}
+      - HEADSCALE_DB_PORT=${DB_PORT}
+      - HEADSCALE_DB_NAME=${DB_NAME}
+      - HEADSCALE_DB_USER=${DB_USER}
+      - HEADSCALE_DB_PASSWORD=${DB_PASSWORD}
+      - HEADSCALE_OIDC_SECRET=${HEADSCALE_OIDC_SECRET}
+      - HEADSCALE_SERVER_URL=${SERVER_URL}
+      - HEADSCALE_LISTEN_ADDR=${LISTEN_ADDR}
+      - HEADSCALE_METRICS_LISTEN_ADDR=${METRICS_LISTEN_ADDR}
+      - HEADSCALE_GRPC_LISTEN_ADDR=${GRPC_LISTEN_ADDR}
+    volumes:
+      - headscale_data:/var/lib/headscale
+      - /var/run/headscale:/var/run/headscale
+    networks:
+      - proxy
+      - headscale_internal
+    ports: []
+    command: serve
+    labels:
+      - "com.headplane.selector=headscale"
+      - "me.tale.headplane.target=headscale"
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.headscale.rule=Host(`headscale.tailnet.work`)"
+      - "traefik.http.routers.headscale.entrypoints=websecure"
+      - "traefik.http.routers.headscale.tls=true"
+      - "traefik.http.routers.headscale.tls.certresolver=letsencrypt"
+      - "traefik.http.services.headscale.loadbalancer.server.port=8080"
+      - "traefik.http.middlewares.headscale-cors.headers.accessControlAllowMethods=GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      - "traefik.http.middlewares.headscale-cors.headers.accessControlAllowHeaders=Authorization,Content-Type,X-Requested-With"
+      - "traefik.http.middlewares.headscale-cors.headers.accessControlAllowOriginList=https://admin.tailnet.work"
+      - "traefik.http.routers.headscale.middlewares=headscale-cors,secure-headers"
+    healthcheck:
+      test: ["CMD", "headscale", "version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: headscale_postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=en_US.UTF-8 --lc-ctype=en_US.UTF-8
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - headscale_postgres_data:/var/lib/postgresql/data
+    networks:
+      - headscale_internal
+    command: >
+      postgres 
+      -c max_connections=100
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.7
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c log_statement=none
+      -c log_duration=off
+      -c log_lock_waits=on
+      -c log_min_duration_statement=1000
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U headscale -d headscale"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s

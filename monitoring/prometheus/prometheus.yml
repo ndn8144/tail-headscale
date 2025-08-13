@@ -1,0 +1,220 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'headscale-tailnet-work'
+    environment: 'production'
+
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 15s
+    metrics_path: '/metrics'
+
+  # Traefik metrics
+  - job_name: 'traefik'
+    static_configs:
+      - targets: ['traefik:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # Headscale metrics
+  - job_name: 'headscale'
+    static_configs:
+      - targets: ['headscale:9090']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Headplane metrics (if available)
+  - job_name: 'headplane'
+    static_configs:
+      - targets: ['headplane:3000']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    # May not exist, so allow failures
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'up'
+        target_label: __tmp_headplane_up
+        replacement: '1'
+
+  # Authelia health (via blackbox)
+  - job_name: 'authelia-health'
+    static_configs:
+      - targets: ['authelia:9091']
+    metrics_path: '/api/health'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # PostgreSQL Exporter
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Node Exporter (system metrics)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # cAdvisor (container metrics)
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Blackbox Exporter - HTTP checks
+  - job_name: 'blackbox-http'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        - https://headscale.tailnet.work
+        - https://admin.tailnet.work
+        - https://monitor.tailnet.work
+        - https://traefik.tailnet.work
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+    scrape_interval: 60s
+    scrape_timeout: 30s
+
+  # Blackbox Exporter - Auth endpoints (may return 401/403)
+  - job_name: 'blackbox-auth'
+    metrics_path: /probe
+    params:
+      module: [http_auth_check]
+    static_configs:
+      - targets:
+        - https://auth.tailnet.work
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+    scrape_interval: 60s
+    scrape_timeout: 30s
+
+  # API Health checks
+  - job_name: 'blackbox-api-health'
+    metrics_path: /probe
+    params:
+      module: [http_api_health]
+    static_configs:
+      - targets:
+        - https://auth.tailnet.work/api/health
+        - https://headscale.tailnet.work/health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+    scrape_interval: 30s
+    scrape_timeout: 15s
+
+  # OIDC Discovery endpoints
+  - job_name: 'blackbox-oidc'
+    metrics_path: /probe
+    params:
+      module: [http_oidc_discovery]
+    static_configs:
+      - targets:
+        - https://auth.tailnet.work/.well-known/openid_configuration
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+    scrape_interval: 300s
+    scrape_timeout: 30s
+
+  # SSL Certificate monitoring
+  - job_name: 'blackbox-ssl'
+    metrics_path: /probe
+    params:
+      module: [tls_connect]
+    static_configs:
+      - targets:
+        - headscale.tailnet.work:443
+        - admin.tailnet.work:443
+        - auth.tailnet.work:443
+        - monitor.tailnet.work:443
+        - traefik.tailnet.work:443
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+    scrape_interval: 300s
+    scrape_timeout: 30s
+
+  # ICMP monitoring
+  - job_name: 'blackbox-icmp'
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    static_configs:
+      - targets:
+        - headscale.tailnet.work
+        - admin.tailnet.work
+        - auth.tailnet.work
+        - monitor.tailnet.work
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+    scrape_interval: 60s
+    scrape_timeout: 30s
+
+  # Loki metrics
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['loki:3100']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Grafana metrics
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s

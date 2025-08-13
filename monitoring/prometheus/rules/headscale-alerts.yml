@@ -1,0 +1,112 @@
+groups:
+  - name: headscale.rules
+    rules:
+    # Service Down Alerts
+    - alert: ServiceDown
+      expr: up == 0
+      for: 2m
+      labels:
+        severity: critical
+        service: "{{ $labels.job }}"
+      annotations:
+        summary: "Service {{ $labels.job }} is down"
+        description: "Service {{ $labels.job }} on {{ $labels.instance }} has been down for more than 2 minutes."
+
+    # High CPU Usage
+    - alert: HighCPUUsage
+      expr: (100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 80
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High CPU usage detected"
+        description: "CPU usage is above 80% for more than 5 minutes on {{ $labels.instance }}"
+
+    # High Memory Usage
+    - alert: HighMemoryUsage
+      expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High memory usage detected"
+        description: "Memory usage is above 85% for more than 5 minutes on {{ $labels.instance }}"
+
+    # Disk Space Low
+    - alert: DiskSpaceLow
+      expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 85
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Disk space running low"
+        description: "Disk usage is above 85% on {{ $labels.instance }} mount {{ $labels.mountpoint }}"
+
+    # SSL Certificate Expiry
+    - alert: SSLCertificateExpiring
+      expr: probe_ssl_earliest_cert_expiry - time() < 86400 * 7
+      for: 0m
+      labels:
+        severity: warning
+      annotations:
+        summary: "SSL certificate expiring soon"
+        description: "SSL certificate for {{ $labels.instance }} will expire in less than 7 days"
+
+    # HTTP Endpoint Down
+    - alert: HTTPEndpointDown
+      expr: probe_success == 0
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "HTTP endpoint is down"
+        description: "HTTP endpoint {{ $labels.instance }} has been down for more than 2 minutes"
+
+    # Database Connection Issues
+    - alert: PostgreSQLDown
+      expr: pg_up == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "PostgreSQL is down"
+        description: "PostgreSQL database is not responding"
+
+    # Too Many Database Connections
+    - alert: PostgreSQLTooManyConnections
+      expr: sum by (instance) (pg_stat_activity_count) > (pg_settings_max_connections * 0.8)
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "PostgreSQL too many connections"
+        description: "PostgreSQL has more than 80% of max connections in use"
+
+    # Headscale Specific Alerts
+    - alert: HeadscaleHighRegistrationLatency
+      expr: histogram_quantile(0.95, rate(headscale_registration_duration_seconds_bucket[5m])) > 5
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Headscale registration latency is high"
+        description: "95th percentile registration latency is above 5 seconds"
+
+    # Container Alerts
+    - alert: ContainerHighCPU
+      expr: (rate(container_cpu_usage_seconds_total[5m]) * 100) > 80
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Container high CPU usage"
+        description: "Container {{ $labels.name }} CPU usage is above 80%"
+
+    - alert: ContainerHighMemory
+      expr: (container_memory_usage_bytes / container_spec_memory_limit_bytes) * 100 > 80
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Container high memory usage"
+        description: "Container {{ $labels.name }} memory usage is above 80%"

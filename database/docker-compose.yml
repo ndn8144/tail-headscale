@@ -1,0 +1,49 @@
+networks:
+  headscale_internal:
+    external: true
+
+volumes:
+  postgres_data:
+    driver: local
+  postgres_backup:
+    driver: local
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: headscale_postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=headscale
+      - POSTGRES_USER=headscale
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=en_US.UTF-8 --lc-ctype=en_US.UTF-8
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - postgres_backup:/backup
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    networks:
+      - headscale_internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U headscale -d headscale"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  authelia-db-init:
+    image: postgres:15-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - headscale_internal
+    environment:
+      - PGPASSWORD=${DB_PASSWORD}
+    command: >
+      psql -h postgres -U headscale -d postgres -c "
+      CREATE USER authelia WITH PASSWORD '${AUTHELIA_DB_PASSWORD}';
+      CREATE DATABASE authelia OWNER authelia;
+      GRANT ALL PRIVILEGES ON DATABASE authelia TO authelia;"
+    restart: "no"

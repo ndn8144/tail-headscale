@@ -1,0 +1,56 @@
+http:
+  middlewares:
+    secure-headers:
+      headers:
+        frameDeny: true
+        sslRedirect: true
+        browserXssFilter: true
+        contentTypeNosniff: true
+        forceSTSHeader: true
+        stsIncludeSubdomains: true
+        stsPreload: true
+        stsSeconds: 63072000
+        customRequestHeaders:
+          X-Forwarded-Proto: "https"
+        customResponseHeaders:
+          X-Robots-Tag: "none,noarchive,nosnippet,notranslate,noimageindex"
+          Server: ""
+
+    api-cors:
+      headers:
+        accessControlAllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - PATCH
+          - OPTIONS
+        accessControlAllowHeaders:
+          - "*"
+        accessControlAllowOriginList:
+          - "https://admin.tailnet.work"
+          - "https://auth.tailnet.work"
+          - "https://headscale.tailnet.work"
+        accessControlMaxAge: 3600
+        addVaryHeader: true
+
+    compression:
+      compress: {}
+
+    rate-limit:
+      rateLimit:
+        burst: 100
+        average: 50
+
+    admin-auth:
+      basicAuth:
+        users:
+          - "admin:$2y$10$Xqf6gWP8.d6JYUOPCqR5aOdRHwQT7vxJBxMPqvyMcjBHjr5KXaH22"
+
+tls:
+  options:
+    default:
+      sslProtocols:
+        - "TLSv1.2"
+        - "TLSv1.3"
+      minVersion: "VersionTLS12"
