@@ -1,41 +1,31 @@
+version: '3.8'
+
 networks:
   headscale_internal:
     external: true
   proxy:
     external: true
 
-volumes:
-  headscale_data:
-    driver: local
-  headscale_postgres_data:
-    driver: local
-
 services:
   headscale:
-    image: headscale/headscale:0.26.0
+    image: headscale/headscale:latest
     container_name: headscale
     restart: unless-stopped
+    env_file:
+      - ../.env
     environment:
-      - TZ=${TZ}
-      - HEADSCALE_DB_TYPE=postgres
-      - HEADSCALE_DB_HOST=${DB_HOST}
-      - HEADSCALE_DB_PORT=${DB_PORT}
-      - HEADSCALE_DB_NAME=${DB_NAME}
-      - HEADSCALE_DB_USER=${DB_USER}
-      - HEADSCALE_DB_PASSWORD=${DB_PASSWORD}
-      - HEADSCALE_OIDC_SECRET=${HEADSCALE_OIDC_SECRET}
-      - HEADSCALE_SERVER_URL=${SERVER_URL}
-      - HEADSCALE_LISTEN_ADDR=${LISTEN_ADDR}
-      - HEADSCALE_METRICS_LISTEN_ADDR=${METRICS_LISTEN_ADDR}
-      - HEADSCALE_GRPC_LISTEN_ADDR=${GRPC_LISTEN_ADDR}
+      - TZ=Asia/Ho_Chi_Minh
     volumes:
+      # Fix: Mount config to the path container expects (with .yaml extension)
+      - ./config/config.yaml:/etc/headscale/config.yaml:ro
       - headscale_data:/var/lib/headscale
       - /var/run/headscale:/var/run/headscale
     networks:
       - proxy
       - headscale_internal
     ports: []
-    command: serve
+    # Fix: Explicitly specify config file path
+    command: serve --config /etc/headscale/config.yaml
     labels:
       - "com.headplane.selector=headscale"
       - "me.tale.headplane.target=headscale"
@@ -51,26 +41,29 @@ services:
       - "traefik.http.middlewares.headscale-cors.headers.accessControlAllowOriginList=https://admin.tailnet.work"
       - "traefik.http.routers.headscale.middlewares=headscale-cors,secure-headers"
     healthcheck:
-      test: ["CMD", "headscale", "version"]
+      test: ["CMD", "headscale", "--config", "/etc/headscale/config.yaml", "version"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
   postgres:
     image: postgres:15-alpine
     container_name: headscale_postgres
     restart: unless-stopped
+    env_file:
+      - ../.env
     environment:
-      - POSTGRES_DB=${DB_NAME}
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=headscale
+      - POSTGRES_USER=headscale
+      - POSTGRES_PASSWORD
       - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=en_US.UTF-8 --lc-ctype=en_US.UTF-8
       - PGDATA=/var/lib/postgresql/data/pgdata
     volumes:
-      - headscale_postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - headscale_internal
     command: >
@@ -94,3 +87,9 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
+
+volumes:
+  headscale_data:
+    driver: local
+  postgres_data:
+    driver: local

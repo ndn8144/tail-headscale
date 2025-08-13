@@ -3,12 +3,14 @@ listen_addr: 0.0.0.0:8080
 metrics_listen_addr: 0.0.0.0:9090
 grpc_listen_addr: 0.0.0.0:50443
 
-db_type: postgres
-db_host: headscale_postgres
-db_port: 5432
-db_name: headscale
-db_user: headscale
-db_pass: headscale_password
+database:
+  type: postgres
+  postgres:
+    host: headscale_postgres
+    port: 5432
+    name: headscale
+    user: headscale
+    pass: headscale_password
 
 private_key_path: /var/lib/headscale/private.key
 noise:
@@ -37,26 +39,9 @@ dns:
   search_domains: ["company.internal"]
   magic_dns: true
   base_domain: company.internal
-  extra_records:
-    - name: "headscale.company.internal"
-      type: "A"
-      value: "100.64.0.1"
-    - name: "admin.company.internal"
-      type: "A"
-      value: "100.64.0.2"
 
 oidc:
   only_start_if_oidc_is_available: false
-  issuer: "https://auth.tailnet.work"
-  client_id: "headscale-client"
-  client_secret: "headscale_oidc_secret"
-  scope: ["openid", "profile", "email", "groups"]
-  extra_params: {}
-  allowed_domains: ["tailnet.work"]
-  allowed_groups: ["headscale-users", "headscale-admins"]
-  allowed_users: []
-  expiry: "180d"
-  use_expiry_from_token: true
 
 policy:
   mode: database

@@ -14,21 +14,23 @@ services:
     container_name: authelia
     restart: unless-stopped
     user: "1000:1000"  # Sửa permission issue
+    env_file:
+      - ../.env
     environment:
       - TZ=Asia/Ho_Chi_Minh
       # Load secrets from .env - removed quotes for proper expansion
-      - JWT_SECRET=${JWT_SECRET}
-      - SESSION_SECRET=${SESSION_SECRET}
-      - STORAGE_ENCRYPTION_KEY=${STORAGE_ENCRYPTION_KEY}
-      - OIDC_HMAC_SECRET=${OIDC_HMAC_SECRET}
-      - OIDC_PRIVATE_KEY=${OIDC_PRIVATE_KEY}
+      - JWT_SECRET
+      - SESSION_SECRET
+      - STORAGE_ENCRYPTION_KEY
+      - OIDC_HMAC_SECRET
+      - OIDC_PRIVATE_KEY
       - AUTHELIA_STORAGE_POSTGRES_PASSWORD=${AUTHELIA_DB_PASSWORD}
-      - HEADSCALE_OIDC_SECRET=${HEADSCALE_OIDC_SECRET}
-      - HEADPLANE_OIDC_SECRET=${HEADPLANE_OIDC_SECRET}
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_PORT=${SMTP_PORT}
-      - SMTP_USERNAME=${SMTP_USERNAME}
-      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - HEADSCALE_OIDC_SECRET
+      - HEADPLANE_OIDC_SECRET
+      - SMTP_HOST
+      - SMTP_PORT
+      - SMTP_USERNAME
+      - SMTP_PASSWORD
     volumes:
       - ./config:/config:rw  # Changed from :ro to :rw
       - authelia_data:/data

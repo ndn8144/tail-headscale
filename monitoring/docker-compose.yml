@@ -63,6 +63,8 @@ services:
     container_name: grafana
     restart: unless-stopped
     user: "0:0"
+    env_file:
+      - ../.env
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin123}
       - GF_SERVER_ROOT_URL=https://monitor.tailnet.work
@@ -74,10 +76,10 @@ services:
       - GF_UNIFIED_ALERTING_ENABLED=true
       - GF_ALERTING_ENABLED=false
       - GF_SMTP_ENABLED=true
-      - GF_SMTP_HOST=${SMTP_HOST}:${SMTP_PORT}
-      - GF_SMTP_USER=${SMTP_USERNAME}
-      - GF_SMTP_PASSWORD=${SMTP_PASSWORD}
-      - GF_SMTP_FROM_ADDRESS=${SMTP_USERNAME}
+      - GF_SMTP_HOST
+      - GF_SMTP_USER
+      - GF_SMTP_PASSWORD
+      - GF_SMTP_FROM_ADDRESS
       - GF_SMTP_FROM_NAME=Headscale Monitoring
     volumes:
       - grafana_data:/var/lib/grafana
@@ -132,6 +134,8 @@ services:
     container_name: alertmanager
     restart: unless-stopped
     user: "0:0"
+    env_file:
+      - ../.env
     command:
       - '--config.file=/etc/alertmanager/config.yml'
       - '--storage.path=/alertmanager'
@@ -224,8 +228,10 @@ services:
     image: prometheuscommunity/postgres-exporter:latest
     container_name: postgres-exporter
     restart: unless-stopped
+    env_file:
+      - ../.env
     environment:
-      - DATA_SOURCE_NAME=postgresql://headscale:${DB_PASSWORD}@headscale_postgres:5432/headscale?sslmode=disable
+      - DATA_SOURCE_NAME
       - PG_EXPORTER_EXTEND_QUERY_PATH=/etc/postgres_exporter/queries.yaml
     networks:
       - headscale_internal
